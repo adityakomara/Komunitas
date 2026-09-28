@@ -1,38 +1,90 @@
+import { useState, useEffect } from 'react';
+import { EventsAPI } from '../backend/api';
+import type { Event } from '../backend/database';
+
 export default function Events() {
-  const events = [
-    {
-      date: '15 Jan 2025',
-      title: 'Tech Talk: AI & Machine Learning',
-      description: 'Diskusi tentang implementasi AI dalam industri Indonesia dengan pembicara dari Google dan Tokopedia.',
-      type: 'Seminar',
-      status: 'Selesai',
-      color: 'bg-blue-500',
-    },
-    {
-      date: '20 Feb 2025',
-      title: 'Hackathon: Smart City Challenge',
-      description: 'Kompetisi 48 jam untuk menciptakan solusi teknologi bagi permasalahan kota pintar.',
-      type: 'Hackathon',
-      status: 'Selesai',
-      color: 'bg-purple-500',
-    },
-    {
-      date: '10 Mar 2025',
-      title: 'Workshop: Cloud Native Development',
-      description: 'Pelatihan intensif menggunakan Kubernetes, Docker, dan microservices architecture.',
-      type: 'Workshop',
-      status: 'Berlangsung',
-      color: 'bg-green-500',
-    },
-    {
-      date: '25 Apr 2025',
-      title: 'TechNusa Annual Meetup 2025',
-      description: 'Pertemuan tahunan seluruh anggota dengan networking session dan sharing knowledge.',
-      type: 'Meetup',
-      status: 'Akan Datang',
-      color: 'bg-orange-500',
-    },
-  ];
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [registeringId, setRegisteringId] = useState<string | null>(null);
+  const [registerStatus, setRegisterStatus] = useState<{ id: string; message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      setLoading(true);
+      const response = await EventsAPI.getAll();
+      if (response.success && response.data) {
+        setEvents(response.data);
+      }
+      setLoading(false);
+    };
+    loadEvents();
+  }, []);
+
+  const handleRegister = async (eventId: string) => {
+    setRegisteringId(eventId);
+    const response = await EventsAPI.registerParticipant(eventId);
+    
+    if (response.success) {
+      setRegisterStatus({ id: eventId, message: 'Berhasil mendaftar!', type: 'success' });
+      // Update local state
+      setEvents(prev => prev.map(e => 
+        e.id === eventId ? { ...e, currentParticipants: e.currentParticipants + 1 } : e
+      ));
+    } else {
+      setRegisterStatus({ id: eventId, message: response.error || 'Gagal mendaftar', type: 'error' });
+    }
+    
+    setRegisteringId(null);
+    setTimeout(() => setRegisterStatus(null), 3000);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-gray-100 text-gray-600';
+      case 'ongoing': return 'bg-green-100 text-green-700';
+      case 'upcoming': return 'bg-blue-100 text-blue-700';
+      default: return 'bg-gray-100 text-gray-600';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'completed': return 'Selesai';
+      case 'ongoing': return 'Berlangsung';
+      case 'upcoming': return 'Akan Datang';
+      default: return status;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Seminar': return 'bg-blue-500';
+      case 'Hackathon': return 'bg-purple-500';
+      case 'Workshop': return 'bg-green-500';
+      case 'Meetup': return 'bg-orange-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  if (loading) {
+    return (
+      <section id="kegiatan" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <span className="inline-block px-4 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium mb-4">
+              Kegiatan
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              Event & Kegiatan Terbaru
+            </h2>
+          </div>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="kegiatan" className="py-20 bg-white">
@@ -52,45 +104,68 @@ export default function Events() {
 
         {/* Events Timeline */}
         <div className="space-y-6">
-          {events.map((event, index) => (
+          {events.map((event) => (
             <div
-              key={index}
+              key={event.id}
               className="bg-white rounded-2xl p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-blue-200"
             >
               <div className="flex flex-col md:flex-row md:items-center gap-4">
                 {/* Date */}
                 <div className="flex-shrink-0">
                   <div className="bg-gray-50 rounded-xl px-4 py-3 text-center">
-                    <div className="text-sm font-bold text-gray-900">{event.date}</div>
+                    <div className="text-sm font-bold text-gray-900">
+                      {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="flex-grow">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className={`${event.color} text-white text-xs px-3 py-1 rounded-full font-medium`}>
+                    <span className={`${getTypeColor(event.type)} text-white text-xs px-3 py-1 rounded-full font-medium`}>
                       {event.type}
                     </span>
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                      event.status === 'Berlangsung' ? 'bg-green-100 text-green-700' :
-                      event.status === 'Akan Datang' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {event.status}
+                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${getStatusColor(event.status)}`}>
+                      {getStatusLabel(event.status)}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      👥 {event.currentParticipants}/{event.maxParticipants} peserta
                     </span>
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-1">{event.title}</h3>
                   <p className="text-gray-600 text-sm">{event.description}</p>
+                  <p className="text-xs text-gray-400 mt-1">📍 {event.location}</p>
                 </div>
 
                 {/* Action */}
                 <div className="flex-shrink-0">
-                  <button className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1 hover:gap-2 transition-all">
-                    Detail
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+                  {event.status === 'upcoming' || event.status === 'ongoing' ? (
+                    <button
+                      onClick={() => handleRegister(event.id)}
+                      disabled={registeringId === event.id || event.currentParticipants >= event.maxParticipants}
+                      className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {registeringId === event.id ? (
+                        <span className="flex items-center gap-2">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Mendaftar...
+                        </span>
+                      ) : event.currentParticipants >= event.maxParticipants ? (
+                        'Penuh'
+                      ) : (
+                        'Daftar'
+                      )}
+                    </button>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Event selesai</span>
+                  )}
+                  
+                  {/* Registration Status */}
+                  {registerStatus && registerStatus.id === event.id && (
+                    <div className={`mt-2 text-xs ${registerStatus.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                      {registerStatus.message}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -99,12 +174,9 @@ export default function Events() {
 
         {/* Calendar CTA */}
         <div className="text-center mt-12">
-          <a href="#" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">
-            Lihat semua kegiatan
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </a>
+          <p className="text-gray-500 text-sm">
+            Data event diambil dari database • {events.length} event tersedia
+          </p>
         </div>
       </div>
     </section>

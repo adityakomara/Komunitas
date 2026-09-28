@@ -1,4 +1,41 @@
+import { useState } from 'react';
+import { NewsletterAPI } from '../backend/api';
+
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setIsSubscribing(true);
+    setSubscribeStatus('idle');
+    setErrorMessage('');
+
+    try {
+      const response = await NewsletterAPI.subscribe(email);
+      if (response.success) {
+        setSubscribeStatus('success');
+        setEmail('');
+      } else {
+        setSubscribeStatus('error');
+        setErrorMessage(response.error || 'Gagal berlangganan');
+      }
+    } catch (error) {
+      setSubscribeStatus('error');
+      setErrorMessage('Terjadi kesalahan');
+    }
+
+    setIsSubscribing(false);
+    setTimeout(() => {
+      setSubscribeStatus('idle');
+      setErrorMessage('');
+    }, 4000);
+  };
+
   return (
     <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -60,16 +97,41 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-white mb-4">Newsletter</h4>
             <p className="text-gray-400 text-sm mb-4">Dapatkan update terbaru tentang event dan kegiatan kami.</p>
-            <div className="flex">
+            
+            {/* Success/Error Messages */}
+            {subscribeStatus === 'success' && (
+              <div className="mb-3 p-2 bg-green-900/50 border border-green-700 rounded-lg text-green-300 text-xs">
+                ✅ Berhasil berlangganan!
+              </div>
+            )}
+            {subscribeStatus === 'error' && (
+              <div className="mb-3 p-2 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-xs">
+                ❌ {errorMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleSubscribe} className="flex">
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Anda"
-                className="flex-grow px-4 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                required
+                disabled={isSubscribing}
+                className="flex-grow px-4 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
               />
-              <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-lg text-sm font-medium hover:opacity-90 transition-opacity">
-                Kirim
+              <button
+                type="submit"
+                disabled={isSubscribing}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-r-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isSubscribing ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  'Kirim'
+                )}
               </button>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -81,7 +143,7 @@ export default function Footer() {
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a href="#" className="text-gray-500 hover:text-white text-sm transition-colors">Privacy Policy</a>
             <a href="#" className="text-gray-500 hover:text-white text-sm transition-colors">Terms of Service</a>
-            <a href="#" className="text-gray-500 hover:text-white text-sm transition-colors">FAQ</a>
+            <a href="#/admin" className="text-gray-500 hover:text-white text-sm transition-colors">Admin</a>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ContactsAPI } from '../backend/api';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -7,15 +8,32 @@ export default function Contact() {
     subject: '',
     message: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Terima kasih! Pesan Anda telah terkirim. Kami akan segera menghubungi Anda.');
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+
+    try {
+      const response = await ContactsAPI.create(formData);
+      if (response.success) {
+        setSubmitStatus('success');
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      setSubmitStatus('error');
+    }
+
+    setIsSubmitting(false);
+    setTimeout(() => setSubmitStatus('idle'), 5000);
   };
 
   return (
@@ -101,11 +119,36 @@ export default function Contact() {
                 </a>
               </div>
             </div>
+
+            {/* Admin Link */}
+            <div className="bg-gray-900 rounded-2xl p-6 text-center">
+              <p className="text-gray-400 text-xs mb-2">Admin Access</p>
+              <a
+                href="#/admin"
+                className="text-white text-sm font-medium hover:text-blue-400 transition-colors"
+              >
+                🔐 Buka Admin Panel
+              </a>
+            </div>
           </div>
 
           {/* Contact Form */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
+              {/* Success/Error Messages */}
+              {submitStatus === 'success' && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center gap-2">
+                  <span>✅</span>
+                  <span>Pesan Anda berhasil dikirim! Kami akan segera menghubungi Anda.</span>
+                </div>
+              )}
+              {submitStatus === 'error' && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
+                  <span>❌</span>
+                  <span>Gagal mengirim pesan. Silakan coba lagi.</span>
+                </div>
+              )}
+
               <div className="grid sm:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
@@ -115,7 +158,8 @@ export default function Contact() {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none disabled:opacity-50"
                     placeholder="Masukkan nama Anda"
                   />
                 </div>
@@ -127,7 +171,8 @@ export default function Contact() {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none disabled:opacity-50"
                     placeholder="email@example.com"
                   />
                 </div>
@@ -140,7 +185,8 @@ export default function Contact() {
                   value={formData.subject}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none disabled:opacity-50"
                 >
                   <option value="">Pilih subjek</option>
                   <option value="membership">Pendaftaran Anggota</option>
@@ -159,16 +205,25 @@ export default function Contact() {
                   onChange={handleChange}
                   required
                   rows={5}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none resize-none"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none resize-none disabled:opacity-50"
                   placeholder="Tulis pesan Anda di sini..."
                 ></textarea>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] transition-all duration-300"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
               >
-                Kirim Pesan
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Mengirim...</span>
+                  </>
+                ) : (
+                  'Kirim Pesan'
+                )}
               </button>
             </form>
           </div>

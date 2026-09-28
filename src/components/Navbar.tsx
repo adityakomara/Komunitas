@@ -41,6 +41,13 @@ export default function Navbar() {
             >
               Gabung Sekarang
             </a>
+            <a
+              href="#/admin"
+              className="text-gray-400 hover:text-gray-600 text-xs font-medium transition-colors"
+              title="Admin Panel"
+            >
+              🔐
+            </a>
           </div>
 
           {/* Mobile Menu Button */}
